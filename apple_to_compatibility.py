@@ -147,7 +147,6 @@ class BatchConverterUI(QWidget):
     # UI 建構
     # ────────────────────────────────────────────────────────────
     def _initUI(self):
-        self.setWindowIcon(QIcon("icon.ico"))
         self.setWindowTitle("Apple格式 FFmpeg 批次轉通用格式工具")
         self.resize(760, 560)
 
@@ -580,7 +579,12 @@ class BatchConverterUI(QWidget):
 # 入口
 # ================================================================
 if __name__ == "__main__":
+    import ctypes
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("myapp.ffmpeg.batch")
+
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon("icon.ico"))  # ← 整個 app 都套用
+
     window = BatchConverterUI()
     window.show()
     sys.exit(app.exec_())
