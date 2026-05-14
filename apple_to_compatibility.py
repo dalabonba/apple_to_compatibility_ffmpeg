@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
     QHeaderView, QAbstractItemView, QFrame, QSizePolicy
 )
 from PyQt5.QtCore import QThread, pyqtSignal, QTimer, Qt
-from PyQt5.QtGui import QFont, QColor, QBrush
+from PyQt5.QtGui import QFont, QColor, QBrush, QIcon
 
 
 # ================================================================
@@ -147,7 +147,8 @@ class BatchConverterUI(QWidget):
     # UI 建構
     # ────────────────────────────────────────────────────────────
     def _initUI(self):
-        self.setWindowTitle("FFmpeg 批次轉檔工具")
+        self.setWindowIcon(QIcon("icon.ico"))
+        self.setWindowTitle("Apple格式 FFmpeg 批次轉通用格式工具")
         self.resize(760, 560)
 
         root = QVBoxLayout()
@@ -156,7 +157,7 @@ class BatchConverterUI(QWidget):
         self.setLayout(root)
 
         # ── 標題 ───────────────────────────────────────────────
-        title = QLabel("🎬  FFmpeg 批次轉檔工具")
+        title = QLabel("🎬  Apple格式 FFmpeg 批次轉通用格式工具")
         title.setFont(QFont("", 16, QFont.Bold))
         root.addWidget(title)
 
