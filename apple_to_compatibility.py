@@ -48,10 +48,6 @@ def get_icon() -> QIcon:
     raw = base64.b64decode(ICON_B64)
     pixmap = QPixmap()
     pixmap.loadFromData(QByteArray(raw))
-
-    print(f"pixmap 是否為空：{pixmap.isNull()}")
-    print(f"pixmap 尺寸：{pixmap.width()} x {pixmap.height()}")
-
     return QIcon(pixmap)
 
 def get_video_duration(filepath: str) -> float:
