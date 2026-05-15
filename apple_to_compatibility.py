@@ -63,7 +63,8 @@ def get_video_duration(filepath: str) -> float:
              '-of', 'default=noprint_wrappers=1:nokey=1',
              filepath],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            encoding='utf-8', errors='ignore', timeout=10
+            encoding='utf-8', errors='ignore', timeout=10,
+            creationflags=subprocess.CREATE_NO_WINDOW
         )
         return float(result.stdout.strip())
     except Exception:
@@ -111,7 +112,8 @@ class FFmpegWorker(QThread):
                 stdout=subprocess.PIPE,
                 universal_newlines=True,
                 encoding='utf-8',
-                errors='ignore'
+                errors='ignore',
+                creationflags=subprocess.CREATE_NO_WINDOW
             )
             for line in self._process.stdout:
                 if self._stop_flag:
