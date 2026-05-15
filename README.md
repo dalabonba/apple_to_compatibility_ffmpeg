@@ -8,6 +8,9 @@
 解決 Apple 影片格式於內嵌 PowerPoint 中時`無法正常嵌入`的問題。  
 （對於已嵌入但無法正常顯示的媒體，請嘗試使用 PowerPoint 中的`最佳化媒體相容性`功能解決）
 
+## 揭露
+本人是廢物，程式碼皆為LLM撰寫。
+
 ## 截圖
 ![alt text](img/screenshot.png)
 
