@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QFileDialog, QComboBox,
     QProgressBar, QTableWidget, QTableWidgetItem,
-    QHeaderView, QAbstractItemView, QFrame, QSizePolicy
+    QHeaderView, QAbstractItemView, QFrame
 )
 from PyQt5.QtCore import QThread, pyqtSignal, QTimer, Qt, QByteArray
 from PyQt5.QtGui import QFont, QColor, QBrush, QIcon, QPixmap
@@ -501,6 +501,14 @@ class BatchConverterUI(QWidget):
             item["status"] = S_CANCELLED
             self._set_row_status(idx, S_CANCELLED)
             self.table.item(idx, COL_ELAPSED).setText("—")
+
+            # 刪除殘留的未完成檔案
+            output_path = self._worker.output_file
+            try:
+                if os.path.exists(output_path):
+                    os.remove(output_path)
+            except OSError:
+                pass  # 刪除失敗也不影響主流程
         elif success:
             item["status"] = S_DONE
             item["output"] = message
