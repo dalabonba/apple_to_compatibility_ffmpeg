@@ -137,6 +137,21 @@ class FFmpegWorker(QThread):
 
 
 # ================================================================
+# VideoDurationLoader：背景載入影片時長
+# ================================================================
+class VideoDurationLoader(QThread):
+    finished_signal = pyqtSignal(str, float)  # filepath, duration
+
+    def __init__(self, filepath: str):
+        super().__init__()
+        self.filepath = filepath
+
+    def run(self):
+        duration = get_video_duration(self.filepath)
+        self.finished_signal.emit(self.filepath, duration)
+
+
+# ================================================================
 # BatchConverterUI：主視窗
 # ================================================================
 class BatchConverterUI(QWidget):
@@ -145,6 +160,7 @@ class BatchConverterUI(QWidget):
         super().__init__()
         # 佇列：list of dict，每個 dict 存這個檔案的所有狀態
         self._queue: list[dict] = []
+        self._duration_loaders: list[VideoDurationLoader] = []
         self._current_idx = -1      # 正在處理的是第幾個
         self._worker: FFmpegWorker | None = None
         self._stop_all = False      # 使用者按下停止時設為 True
@@ -336,21 +352,46 @@ class BatchConverterUI(QWidget):
         for f in fnames:
             if f in existing:
                 continue  # 跳過重複的
-            duration = get_video_duration(f)
             item = {
                 "path": f,
                 "status": S_PENDING,
-                "duration": duration,
+                "duration": 0.0,
                 "elapsed": 0,
                 "output": "",
                 "error": "",
             }
             self._queue.append(item)
             self._add_table_row(item)
+            self._start_duration_loader(f)
             added += 1
         if added:
             self._refresh_queue_count()
             self._refresh_overall_progress()
+
+
+    def _start_duration_loader(self, filepath: str):
+        MAX_CONCURRENT_LOADERS = 4  # 最多同時跑幾個 ffprobe
+        # 超過上限則放入待辦，等有空位再啟動
+        if len([t for t in self._duration_loaders if t.isRunning()]) >= MAX_CONCURRENT_LOADERS:
+            QTimer.singleShot(500, lambda: self._start_duration_loader(filepath))
+            return
+        loader = VideoDurationLoader(filepath)
+        loader.finished_signal.connect(self._on_duration_loaded)
+        loader.finished_signal.connect(lambda _, __, loader=loader: self._cleanup_duration_loader(loader))
+        self._duration_loaders.append(loader)
+        loader.start()
+
+    def _cleanup_duration_loader(self, loader: VideoDurationLoader):
+        self._duration_loaders = [t for t in self._duration_loaders if t is not loader]
+
+    def _on_duration_loaded(self, filepath: str, duration: float):
+        for idx, item in enumerate(self._queue):
+            if item["path"] == filepath:
+                item["duration"] = duration
+                cell = self.table.item(idx, COL_DURATION)
+                if cell is not None:
+                    cell.setText(seconds_to_mmss(duration))
+                break
 
     def _add_table_row(self, item: dict):
         row = self.table.rowCount()
