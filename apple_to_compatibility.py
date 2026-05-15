@@ -92,12 +92,23 @@ class FFmpegWorker(QThread):
         self.total_seconds = total_seconds
         self._process = None
         self._stop_flag = False
+        self._process_timeout = 600  # 10 分鐘超時（秒）
 
     def stop(self):
         """外部呼叫：強制終止正在執行的 FFmpeg process"""
         self._stop_flag = True
         if self._process and self._process.poll() is None:
-            self._process.terminate()
+            try:
+                self._process.terminate()
+                # 給予 3 秒讓進程優雅地退出
+                try:
+                    self._process.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    # 強制殺死
+                    self._process.kill()
+                    self._process.wait()
+            except Exception as e:
+                print(f"進程終止失敗：{e}")
 
     def run(self):
         time_pattern = re.compile(r"time=(\d{2}):(\d{2}):(\d{2}\.\d{2})")
@@ -111,24 +122,42 @@ class FFmpegWorker(QThread):
                 errors='ignore',
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
-            for line in self._process.stdout:
+            
+            try:
+                # 使用 communicate 代替直接讀取，避免緩衝區死鎖
+                stdout_data, _ = self._process.communicate(timeout=self._process_timeout)
+                
+                # 解析輸出的每一行
+                try:
+                    for line in stdout_data.split('\n'):
+                        if self._stop_flag:
+                            break
+                        try:
+                            match = time_pattern.search(line)
+                            if match and self.total_seconds > 0:
+                                h, m, s = match.groups()
+                                cur = int(h) * 3600 + int(m) * 60 + float(s)
+                                pct = int(min(cur / self.total_seconds * 100, 99))
+                                self.progress_signal.emit(pct)
+                        except (ValueError, AttributeError):
+                            # 忽略無法解析的行
+                            pass
+                except UnicodeDecodeError as e:
+                    self.finished_signal.emit(False, f"編碼錯誤：{e}")
+                    return
+
                 if self._stop_flag:
-                    break
-                match = time_pattern.search(line)
-                if match and self.total_seconds > 0:
-                    h, m, s = match.groups()
-                    cur = int(h) * 3600 + int(m) * 60 + float(s)
-                    pct = int(min(cur / self.total_seconds * 100, 99))
-                    self.progress_signal.emit(pct)
-
-            self._process.wait()
-
-            if self._stop_flag:
-                self.finished_signal.emit(False, "__cancelled__")
-            elif self._process.returncode == 0:
-                self.finished_signal.emit(True, self.output_file)
-            else:
-                self.finished_signal.emit(False, "FFmpeg 回傳錯誤，請確認格式是否支援")
+                    self.finished_signal.emit(False, "__cancelled__")
+                elif self._process.returncode == 0:
+                    self.finished_signal.emit(True, self.output_file)
+                else:
+                    self.finished_signal.emit(False, "FFmpeg 回傳錯誤，請確認格式是否支援")
+                    
+            except subprocess.TimeoutExpired:
+                # 進程超時
+                self._process.kill()
+                self._process.wait()
+                self.finished_signal.emit(False, "轉換超時（超過 10 分鐘），已自動停止")
 
         except FileNotFoundError:
             self.finished_signal.emit(False, "找不到 ffmpeg，請確認已安裝並加入 PATH")
@@ -168,6 +197,26 @@ class BatchConverterUI(QWidget):
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._initUI()
+
+    def closeEvent(self, event):
+        """應用關閉時的清理邏輯"""
+        # 停止計時器
+        self._timer.stop()
+        
+        # 停止轉換進程
+        self._stop_all = True
+        if self._worker and self._worker.isRunning():
+            self._worker.stop()
+            # 等待最多 2 秒讓進程結束
+            self._worker.wait(2000)
+        
+        # 清理所有 duration loader 線程
+        for loader in self._duration_loaders:
+            if loader.isRunning():
+                loader.wait(2000)
+        
+        self._duration_loaders.clear()
+        event.accept()
 
     # ────────────────────────────────────────────────────────────
     # UI 建構
@@ -541,11 +590,8 @@ class BatchConverterUI(QWidget):
 
             # 刪除殘留的未完成檔案
             output_path = self._worker.output_file
-            try:
-                if os.path.exists(output_path):
-                    os.remove(output_path)
-            except OSError:
-                pass  # 刪除失敗也不影響主流程
+            self._cleanup_output_file(output_path)
+            
         elif success:
             item["status"] = S_DONE
             item["output"] = message
@@ -563,6 +609,10 @@ class BatchConverterUI(QWidget):
             self._set_row_status(idx, S_ERROR)
             self.table.item(idx, COL_ELAPSED).setText("—")
             self.table.item(idx, COL_OUTPUT).setText(message)
+            
+            # 轉換失敗時也嘗試清理輸出檔案
+            output_path = self._worker.output_file
+            self._cleanup_output_file(output_path)
 
         self._refresh_overall_progress()
 
@@ -575,6 +625,21 @@ class BatchConverterUI(QWidget):
             self._on_all_done()
         else:
             self._process_next()
+
+    def _cleanup_output_file(self, filepath: str) -> None:
+        """安全地刪除輸出檔案"""
+        try:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        except PermissionError:
+            # 檔案被鎖定，通常是因為轉換仍在進行或被其他進程占用
+            print(f"⚠️  無法刪除檔案（權限被拒）：{filepath}")
+        except FileNotFoundError:
+            # 檔案不存在，這是預期的情況
+            pass
+        except Exception as e:
+            # 其他錯誤
+            print(f"⚠️  刪除檔案失敗：{filepath} - {type(e).__name__}: {e}")
 
     def _stop_all_jobs(self):
         self._stop_all = True
