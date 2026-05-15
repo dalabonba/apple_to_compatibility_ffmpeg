@@ -241,7 +241,7 @@ class BatchConverterUI(QWidget):
 
         settings_row.addWidget(QLabel("📝 輸出後綴："))
         self.suffix_combo = QComboBox()
-        self.suffix_combo.addItems(["_converted", "_fixed", "_batch", "（原檔名）"])
+        self.suffix_combo.addItems(["_converted", "_fixed", "_batch", "_out"])
         self.suffix_combo.setFixedWidth(130)
         settings_row.addWidget(self.suffix_combo)
         settings_row.addStretch()
@@ -463,11 +463,7 @@ class BatchConverterUI(QWidget):
         # 決定輸出路徑
         suffix_text = self.suffix_combo.currentText()
         base, ext = os.path.splitext(item["path"])
-        if "原檔名" in suffix_text:
-            output_file = base + "_out.mp4"
-        else:
-            suffix = suffix_text.split()[0]
-            output_file = base + suffix + ".mp4"
+        output_file = base + suffix_text + ".mp4"
 
         preset_text = self.preset_combo.currentText().split()[0]
         command = [
