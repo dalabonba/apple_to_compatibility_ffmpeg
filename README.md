@@ -1,4 +1,4 @@
-# Apple 格式 FFmpeg 批次轉換工具
+# Apple 格式批次轉換通用格式工具
 
 <img src="img/icon.png" alt="描述文字" width="20%">
 
