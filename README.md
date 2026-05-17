@@ -8,13 +8,14 @@
 解決 Apple 影片格式於內嵌 PowerPoint 中時`無法正常嵌入`的問題。  
 （對於已嵌入但無法正常顯示的媒體，請嘗試使用 PowerPoint 中的`最佳化媒體相容性`功能解決）
 
-## 揭露
-本人是廢物，程式碼皆為LLM撰寫。
+> [!NOTE]
+> ## 📢揭露
+> 本人是廢物，程式碼皆為LLM撰寫。
 
-## 截圖
+## 🖼️截圖
 ![alt text](img/screenshot.png)
 
-## 主要功能
+## ✨主要功能
 
 - 加入多個影片檔案進行批次轉換
 - 逐檔、整體雙進度條顯示
@@ -23,7 +24,7 @@
 - 支援停止/取消目前轉檔工作
 - 顯示每個檔案的狀態、耗時與輸出檔名
 
-## 使用說明
+## 🧑‍🏫使用說明
 
 前往 [Releases 頁面](https://github.com/dalabonba/apple_to_compatibility_ffmpeg/releases) 下載已打包的版本。
 
@@ -34,21 +35,22 @@
 5. 若要中斷，點選「⏹ 停止」
 6. 若要移除已加入的檔案，使用「➖ 移除選取」或「🗑 清空佇列」
 
-## 注意事項
+> [!WARNING]
+> ## ⚠️注意事項
+>
+> - 此程式依賴外部 `ffmpeg`，若系統找不到 `ffmpeg`，程式會顯示錯誤。
+> - 於 cmd 或 PowerShell 執行以下指令確認系統是否有安裝`ffmpeg`
+>    ```powershell
+>    ffmpeg -version
+>    ```
+> - 若要安裝`ffmpeg`，請於 cmd 或 PowerShell 執行
+>    ```powershell
+>    winget install ffmpeg
+>    ```
+>
+> - 目前設計以 Windows 為主要執行環境。
 
-- 此程式依賴外部 `ffmpeg`，若系統找不到 `ffmpeg`，程式會顯示錯誤。
-- 於 cmd 或 PowerShell 執行以下指令確認系統是否有安裝`ffmpeg`
-    ```powershell
-    ffmpeg -version
-    ```
-- 若要安裝`ffmpeg`，請於 cmd 或 PowerShell 執行
-    ```powershell
-    winget install ffmpeg
-    ```
-
-- 目前設計以 Windows 為主要執行環境。
-
-## 輸出行為
+## 🖨️輸出行為
 
 - 預設輸出為 `MP4` 格式
 - 影片編碼：`libx264`
@@ -58,7 +60,7 @@
 
 
 
-# 開發者資訊
+# 🧑‍💻開發者資訊
 
 以下針對開發者與維護者，說明專案環境、依賴、檔案結構與執行方式。
 
