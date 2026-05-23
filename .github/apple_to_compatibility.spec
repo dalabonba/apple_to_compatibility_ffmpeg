@@ -1,8 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(SPEC))
+APP_SCRIPT = os.path.join(BASE_DIR, '..', 'apple_to_compatibility.py')
+ICON_PATH = os.path.join(BASE_DIR, 'img', 'icon.ico')
 
 a = Analysis(
-    ['apple_to_compatibility.py'],
+    [APP_SCRIPT],
     pathex=[],
     binaries=[],
     datas=[],
@@ -32,7 +37,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='.github/img/icon.ico',
+    icon=ICON_PATH,
 )
 coll = COLLECT(
     exe,
