@@ -81,6 +81,27 @@ def seconds_to_mmss(s: float) -> str:
 # ================================================================
 # FFmpegWorker：在背景執行單一檔案的 FFmpeg 工作
 # ================================================================
+FFMPEG_PROGRESS_PATTERN = re.compile(r"time=(\d{2}):(\d{2}):(\d{2}\.\d{2})")
+
+
+def parse_ffmpeg_progress_line(line: str, total_seconds: float) -> int | None:
+    """從 ffmpeg 的進度文字中解析目前進度，回傳 0~99。"""
+    if total_seconds <= 0:
+        return None
+
+    match = FFMPEG_PROGRESS_PATTERN.search(line)
+    if not match:
+        return None
+
+    try:
+        hours, minutes, seconds = match.groups()
+        current_seconds = int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+    except ValueError:
+        return None
+
+    return max(0, min(int(current_seconds / total_seconds * 100), 99))
+
+
 class FFmpegWorker(QThread):
     progress_signal = pyqtSignal(int)       # 目前這個檔案的進度 0~99
     finished_signal = pyqtSignal(bool, str) # (成功?, 輸出路徑或錯誤訊息)
@@ -111,7 +132,6 @@ class FFmpegWorker(QThread):
                 print(f"進程終止失敗：{e}")
 
     def run(self):
-        time_pattern = re.compile(r"time=(\d{2}):(\d{2}):(\d{2}\.\d{2})")
         try:
             self._process = subprocess.Popen(
                 self.command,
@@ -122,39 +142,32 @@ class FFmpegWorker(QThread):
                 errors='ignore',
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
-            
+
             try:
-                # 使用 communicate 代替直接讀取，避免緩衝區死鎖
-                stdout_data, _ = self._process.communicate(timeout=self._process_timeout)
-                
-                # 解析輸出的每一行
-                try:
-                    for line in stdout_data.split('\n'):
-                        if self._stop_flag:
-                            break
-                        try:
-                            match = time_pattern.search(line)
-                            if match and self.total_seconds > 0:
-                                h, m, s = match.groups()
-                                cur = int(h) * 3600 + int(m) * 60 + float(s)
-                                pct = int(min(cur / self.total_seconds * 100, 99))
-                                self.progress_signal.emit(pct)
-                        except (ValueError, AttributeError):
-                            # 忽略無法解析的行
-                            pass
-                except UnicodeDecodeError as e:
-                    self.finished_signal.emit(False, f"編碼錯誤：{e}")
-                    return
+                while True:
+                    line = self._process.stdout.readline()
+                    if not line and self._process.poll() is not None:
+                        break
+
+                    if self._stop_flag:
+                        break
+
+                    pct = parse_ffmpeg_progress_line(line, self.total_seconds)
+                    if pct is not None:
+                        self.progress_signal.emit(pct)
 
                 if self._stop_flag:
+                    self._process.kill()
+                    self._process.wait()
                     self.finished_signal.emit(False, "__cancelled__")
-                elif self._process.returncode == 0:
+                    return
+
+                returncode = self._process.wait(timeout=5)
+                if returncode == 0:
                     self.finished_signal.emit(True, self.output_file)
                 else:
                     self.finished_signal.emit(False, "FFmpeg 回傳錯誤，請確認格式是否支援")
-                    
             except subprocess.TimeoutExpired:
-                # 進程超時
                 self._process.kill()
                 self._process.wait()
                 self.finished_signal.emit(False, "轉換超時（超過 10 分鐘），已自動停止")

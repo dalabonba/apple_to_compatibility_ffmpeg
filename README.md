@@ -1,6 +1,6 @@
 # Apple 格式批次轉換通用格式工具
 
-<img src="img/icon.png" alt="描述文字" width="20%">
+<img src=".github/img/icon.png" alt="描述文字" width="20%">
 
 這是一個基於 `PyQt5` 與 `FFmpeg` 的桌面 GUI 工具，用於將 Apple 影片格式批次轉換為更通用、兼容的 `H.264 + AAC` MP4 檔案。
 
@@ -13,7 +13,7 @@
 > 本人是廢物，程式碼皆為LLM撰寫。
 
 ## 🖼️截圖
-![alt text](img/screenshot.png)
+![alt text](.github/img/screenshot.png)
 
 ## ✨主要功能
 
